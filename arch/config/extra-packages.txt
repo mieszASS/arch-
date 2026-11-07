@@ -1,0 +1,58 @@
+# Pulpit KDE Plasma + system okien + fallback X11
+plasma-desktop
+plasma-workspace
+plasma-nm
+plasma-pa
+plasma-x11-session
+sddm
+xorg-server
+xorg-xwayland
+xdg-desktop-portal-kde
+polkit-kde-agent
+powerdevil
+
+# Wygląd i efekty
+breeze
+breeze-gtk
+papirus-icon-theme
+kvantum
+noto-fonts
+noto-fonts-emoji
+qt6-tools
+
+# Aplikacje użytkownika
+firefox
+dolphin
+konsole
+kate
+ark
+spectacle
+gwenview
+systemsettings
+kinfocenter
+plasma-systemmonitor
+discover
+flatpak
+kdeconnect
+
+# Dźwięk / łączność
+networkmanager
+wpa_supplicant
+bluez
+bluez-utils
+bluedevil
+pipewire
+pipewire-alsa
+pipewire-pulse
+wireplumber
+
+# Narzędzia
+sudo
+git
+nano
+rsync
+
+# Obsługa skryptu konfiguracji Kvantum + moduły powiadomień
+python
+libnotify
+kconfig

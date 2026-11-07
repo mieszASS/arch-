@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Przywróć ostatnią kopię ustawień z GlassArch setup.
+set -Eeuo pipefail
+if (( EUID == 0 )); then echo "Uruchom bez sudo." >&2; exit 1; fi
+folder="${1:-}"
+if [[ -z "$folder" ]]; then
+  folder="$(find "$HOME/.local/share/glassarch" -maxdepth 1 -type d -name 'backup-*' 2>/dev/null | sort -r | head -1)"
+fi
+if [[ -z "$folder" || ! -d "$folder" ]]; then
+  echo "Nie znaleziono kopii. Podaj katalog backupu jako argument." >&2; exit 1
+fi
+for name in kdeglobals kwinrc plasmarc konsolerc breezerc plasma-org.kde.plasma.desktop-appletsrc; do
+  [[ -f "$folder/$name" ]] && cp -p "$folder/$name" "$HOME/.config/$name"
+done
+if [[ -f "$folder/Kvantum/kvantum.kvconfig" ]]; then
+  mkdir -p "$HOME/.config/Kvantum"
+  cp -p "$folder/Kvantum/kvantum.kvconfig" "$HOME/.config/Kvantum/kvantum.kvconfig"
+fi
+if [[ -f "$folder/konsole/GlassArch.profile" ]]; then
+  mkdir -p "$HOME/.local/share/konsole"
+  cp -p "$folder/konsole/GlassArch.profile" "$HOME/.local/share/konsole/GlassArch.profile"
+fi
+rm -f "$HOME/.config/glassarch/liquid-glass-v2"
+# Unikamy natychmiastowej ponownej konfiguracji przy następnym logowaniu.
+rm -f "$HOME/.config/autostart/glassarch-first-run.desktop"
+echo "Przywrócono zapisane ustawienia. Wyloguj się i zaloguj ponownie."
+echo "Jeśli jakiś plik nie istniał przed stylizacją, kopia go nie zawiera."

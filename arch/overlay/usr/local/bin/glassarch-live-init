@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Uruchamiane tylko w obrazie Live. Tworzy konto demonstracyjne z /etc/skel.
+set -Eeuo pipefail
+if ! id glass >/dev/null 2>&1; then
+  useradd -m -G wheel,audio,video -s /usr/bin/bash glass
+fi
+# Sesja Live: nie przenosić hasła/braku hasła na normalną instalację systemu.
+passwd -d glass >/dev/null

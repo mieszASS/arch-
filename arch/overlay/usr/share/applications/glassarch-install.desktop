@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Instalator Arch Linux (zaawansowany)
+Comment=Instalator tekstowy archinstall. Wersja live nie instaluje automatycznie GlassArch.
+Exec=konsole -e sudo archinstall
+Terminal=false
+Icon=system-software-install
+Categories=System;

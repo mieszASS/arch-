@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=GlassArch Liquid Glass — nałóż szkło
+Comment=Włącz lub odśwież przezroczysty dock, panele, widgety i okna Qt
+Exec=glassarch-setup
+Terminal=false
+Icon=preferences-desktop-theme
+Categories=Settings;DesktopSettings;

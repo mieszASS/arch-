@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+# GlassArch Liquid Glass: uaktywnia motyw dla bieżącego użytkownika KDE.
+# Tworzy kopię ustawień i nigdy nie modyfikuje partycji.
+set -Eeuo pipefail
+if (( EUID == 0 )); then
+  echo "Uruchom bez sudo, jako zwykły użytkownik Plasma." >&2
+  exit 1
+fi
+MARKER="$HOME/.config/glassarch/liquid-glass-v2"
+[[ "${1:-}" == "--first-run" && -e "$MARKER" ]] && exit 0
+source_js=/usr/share/glassarch/plasma-layout.js
+[[ -f "$source_js" ]] || { echo "Brak $source_js"; exit 1; }
+command -v python3 >/dev/null || { echo "Brak python3; zainstaluj pakiet python"; exit 1; }
+command -v kwriteconfig6 >/dev/null || { echo "Brak kwriteconfig6; zainstaluj kconfig"; exit 1; }
+BACKUP="$HOME/.local/share/glassarch/backup-$(date +%Y%m%d-%H%M%S)-$$"
+mkdir -p "$BACKUP" "$(dirname "$MARKER")"
+
+# Backup: istniejąca konfiguracja jest bezpieczna.
+for name in kdeglobals kwinrc plasmarc konsolerc breezerc plasma-org.kde.plasma.desktop-appletsrc; do
+  [[ -f "$HOME/.config/$name" ]] && cp -p "$HOME/.config/$name" "$BACKUP/$name"
+done
+if [[ -f "$HOME/.config/Kvantum/kvantum.kvconfig" ]]; then
+  mkdir -p "$BACKUP/Kvantum"
+  cp -p "$HOME/.config/Kvantum/kvantum.kvconfig" "$BACKUP/Kvantum/"
+fi
+if [[ -f "$HOME/.local/share/konsole/GlassArch.profile" ]]; then
+  mkdir -p "$BACKUP/konsole"
+  cp -p "$HOME/.local/share/konsole/GlassArch.profile" "$BACKUP/konsole/"
+fi
+
+# Autorski styl Plasma: panele, menu, widżety, KRunner.
+kwriteconfig6 --file plasmarc --group Theme --key name GlassArchGlass
+kwriteconfig6 --file kdeglobals --group General --key ColorScheme BreezeDark
+kwriteconfig6 --file kdeglobals --group Icons --key Theme Papirus-Dark
+kwriteconfig6 --file kdeglobals --group KDE --key widgetStyle kvantum
+
+# KWin: tło za półprzezroczystymi elementami musi być rozmyte.
+kwriteconfig6 --file kwinrc --group Compositing --key AnimationSpeed 2
+kwriteconfig6 --file kwinrc --group Effect-blur --key BlurStrength 10
+kwriteconfig6 --file kwinrc --group Effect-blur --key NoiseStrength 0
+for effect in blur contrast fadingpopups glide kwin4_effect_scale slide; do
+  kwriteconfig6 --file kwinrc --group Plugins --key "${effect}Enabled" true
+done
+
+# Breeze fallback: transparentność menu aplikacji tam, gdzie Kvantum nie działa.
+kwriteconfig6 --file breezerc --group Style --key MenuOpacity 55
+
+# Skórka Kvantum pod aplikacje Qt. Bazujemy na dołączonym do pakietu KvRoughGlass
+# zamiast pobierać losowe tematy przez Internet.
+kvsrc=/usr/share/Kvantum/KvRoughGlass
+if [[ -f "$kvsrc/KvRoughGlass.kvconfig" && -f "$kvsrc/KvRoughGlass.svg" ]]; then
+  kvdst="$HOME/.config/Kvantum/GlassArchGlass"
+  mkdir -p "$kvdst"
+  cp -f "$kvsrc/KvRoughGlass.svg" "$kvdst/GlassArchGlass.svg"
+  cp -f "$kvsrc/KvRoughGlass.kvconfig" "$kvdst/GlassArchGlass.kvconfig"
+  python3 - "$kvdst/GlassArchGlass.kvconfig" <<'PYCONFIG'
+import configparser, sys
+path = sys.argv[1]
+cfg = configparser.ConfigParser(interpolation=None, strict=False)
+cfg.optionxform = str
+cfg.read(path, encoding="utf-8")
+for section in ("General", "Hacks"):
+    if not cfg.has_section(section):
+        cfg.add_section(section)
+params = {
+    "composite": "true",
+    "translucent_windows": "true",
+    "reduce_window_opacity": "28",
+    "reduce_menu_opacity": "38",
+    "blurring": "true",
+    "popup_blurring": "true",
+    "animate_states": "true",
+}
+for name, val in params.items():
+    cfg.set("General", name, val)
+for name, val in {
+    "transparent_dolphin_view": "true",
+    "transparent_menutitle": "true",
+    "blur_translucent": "true",
+}.items():
+    cfg.set("Hacks", name, val)
+with open(path, "w", encoding="utf-8") as fp:
+    cfg.write(fp)
+PYCONFIG
+  mkdir -p "$HOME/.config/Kvantum"
+  kwriteconfig6 --file "$HOME/.config/Kvantum/kvantum.kvconfig" --group General --key theme GlassArchGlass
+else
+  echo "Uwaga: brak KvRoughGlass. Szkło KDE Plasma działa, ale styl okien Qt będzie ograniczony." >&2
+  kwriteconfig6 --file kdeglobals --group KDE --key widgetStyle Breeze
+fi
+
+# Szklisty terminal (Konsole).
+mkdir -p "$HOME/.local/share/konsole"
+if [[ -f /usr/share/glassarch/GlassArch.colors ]]; then
+  cp -f /usr/share/glassarch/GlassArch.colors "$HOME/.local/share/konsole/GlassArch.colors"
+  cp -f /usr/share/glassarch/GlassArch.profile "$HOME/.local/share/konsole/GlassArch.profile"
+  kwriteconfig6 --file konsolerc --group "Desktop Entry" --key DefaultProfile GlassArch.profile
+fi
+
+# Live lub aktualnie uruchomiona Plasma: konfiguracja docka i tapety przez D-Bus.
+QDBUS=""
+if command -v qdbus6 >/dev/null 2>&1; then
+  QDBUS="$(command -v qdbus6)"
+elif [[ -x /usr/lib/qt6/bin/qdbus6 ]]; then
+  QDBUS="/usr/lib/qt6/bin/qdbus6"
+fi
+
+applied=false
+if [[ -n "$QDBUS" ]]; then
+  for attempt in $(seq 1 12); do
+    if "$QDBUS" org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "$(cat "$source_js")" >/dev/null 2>&1; then
+      applied=true
+      "$QDBUS" org.kde.KWin /KWin org.kde.KWin.reconfigure >/dev/null 2>&1 || true
+      break
+    fi
+    sleep 1
+  done
+fi
+
+if [[ "$applied" == true ]]; then
+  mkdir -p "$(dirname "$MARKER")"
+  touch "$MARKER"
+  echo "GlassArch Liquid Glass aktywny. Kopia ustawień: $BACKUP"
+  echo "Wyloguj się i zaloguj ponownie, aby całe Qt/Kvantum przejęło nowy styl."
+else
+  echo "Styl Qt i KWin zapisany, ale Plasma Shell nie odpowiedziała." >&2
+  echo "Zaloguj się do KDE Plasma i uruchom jeszcze raz glassarch-setup." >&2
+  echo "Kopia ustawień: $BACKUP"
+  exit 1
+fi

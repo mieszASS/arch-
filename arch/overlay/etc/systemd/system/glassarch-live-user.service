@@ -1,0 +1,14 @@
+[Unit]
+Description=GlassArch Live: utwórz użytkownika demonstracyjnego
+DefaultDependencies=no
+After=local-fs.target systemd-remount-fs.service
+Before=display-manager.service
+ConditionPathExists=/etc/glassarch-live
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/glassarch-live-init
+RemainAfterExit=yes
+
+[Install]
+WantedBy=graphical.target

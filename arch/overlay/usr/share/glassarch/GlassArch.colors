@@ -1,0 +1,16 @@
+[General]
+Description=GlassArch Liquid Glass
+Opacity=0.72
+Blur=true
+
+[Background]
+Color=19,24,42
+
+[Foreground]
+Color=242,244,255
+
+[BackgroundIntense]
+Color=42,50,77
+
+[ForegroundIntense]
+Color=255,255,255

@@ -1,0 +1,18 @@
+{
+  "KPlugin": {
+    "Authors": [
+      {
+        "Name": "GlassArch project"
+      }
+    ],
+    "Name": "GlassArch Liquid Glass",
+    "Description": "Autorski styl Plasma 6: półprzezroczyste panele, wyskakujące okna i widżety.",
+    "Id": "GlassArchGlass",
+    "Version": "0.2",
+    "Category": "",
+    "EnabledByDefault": true,
+    "License": "CC0-1.0",
+    "Website": ""
+  },
+  "X-Plasma-API": "5.0"
+}
