@@ -1,9 +1,8 @@
-# Pulpit KDE Plasma + system okien + fallback X11
+# Pulpit KDE Plasma (sesja Wayland) + zgodność XWayland
 plasma-desktop
 plasma-workspace
 plasma-nm
 plasma-pa
-plasma-x11-session
 sddm
 xorg-server
 xorg-xwayland
