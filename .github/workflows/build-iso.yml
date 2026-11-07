@@ -1,0 +1,67 @@
+name: GlassArch - zbuduj ISO online
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  glassarch-iso:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 330
+    steps:
+      - name: Pobierz pliki projektu
+        uses: actions/checkout@v4
+
+      - name: Zwolnij miejsce na ISO
+        shell: bash
+        run: |
+          df -h /
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/hostedtoolcache /opt/ghc /usr/local/.ghcup || true
+          docker system prune -af --volumes || true
+          df -h /
+
+      - name: Zbuduj GlassArch przez archiso
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          docker run --rm --privileged --security-opt seccomp=unconfined \
+            --mount "type=bind,source=${GITHUB_WORKSPACE},target=/project" \
+            --workdir /project/arch archlinux:latest /bin/bash -Eeuo pipefail -c '
+              pacman -Syu --noconfirm --needed archiso rsync
+              bash ./build.sh
+            '
+          ls -lh arch/out/*.iso
+
+      - name: Podziel ISO na pliki do pobrania
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p upload
+          iso="$(find arch/out -maxdepth 1 -type f -name '*.iso' -print -quit)"
+          test -n "$iso"
+          filename="$(basename "$iso")"
+          sha256sum "$iso" | sed "s#  $iso#  $filename#" > "upload/$filename.sha256"
+          cp arch/scal-iso.ps1 upload/
+          if (( $(stat -c '%s' "$iso") < 1800 * 1024 * 1024 )); then
+            cp "$iso" upload/
+          else
+            split --bytes=1800M --numeric-suffixes=1 --suffix-length=3 \
+              "$iso" "upload/$filename.chunk-"
+          fi
+          ls -lh upload/
+
+      - name: Opublikuj ISO w Releases
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -Eeuo pipefail
+          tag="glassarch-0.3-${GITHUB_RUN_NUMBER}"
+          gh release create "$tag" upload/* \
+            --title "GlassArch 0.3 ISO build ${GITHUB_RUN_NUMBER}" \
+            --notes-file arch/RELEASE-NOTES.md \
+            --prerelease
+          gh release view "$tag" --json url --jq '.url' >> "$GITHUB_STEP_SUMMARY"
